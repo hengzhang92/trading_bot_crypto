@@ -97,6 +97,7 @@ def decision(sig,f,quantity):
     return decision_out
 
 def decision_buy_sell_f(sig,buy_f,sell_f,quantity):
+    # buy and sell order based on different filter frequency for bullish and bearish market
     numerator_coeffs, denominator_coeffs = signal.butter(2, buy_f)
     filtered_buy = signal.lfilter(numerator_coeffs, denominator_coeffs, sig)
     numerator_coeffs, denominator_coeffs = signal.butter(2, sell_f)
@@ -107,6 +108,7 @@ def decision_buy_sell_f(sig,buy_f,sell_f,quantity):
         decision_out='buy'
     else:
         decision_out='NA'
+    return decision_out
 
 def get_total_asset(coins):
     # get total assets in USDT
@@ -119,19 +121,19 @@ def get_total_asset(coins):
     return asset_total
 
 
-
+totalasset=get_total_asset(coins)
 for coin in coins:
     sig=get_last_price(coin,'1000h ago UTC')
     buy_frequency,sell_frequency,invest_weight = get_f(coin)
     cash = float(client.get_asset_balance(asset='USDT')['free'])
     quantity = float(client.get_asset_balance(asset=coin)['free'])
-    decision_out=decision(sig, f, quantity)
+    decision_out=decision_buy_sell_f(sig, buy_frequency, sell_frequency, quantity)
     logger = setup_logger(coin, coin + '_decision.log')
 
     print(decision_out)
     try:
         if decision_out =='buy':
-            buyorder(coin)
+            buyorder_weighted(coin, totalasset, invest_weight-0.0001) # avoid numerical error
             logger.info('decision = ' + decision_out)
         elif decision_out == 'sell':
             sellorder(coin)
