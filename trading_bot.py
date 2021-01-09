@@ -22,9 +22,8 @@ def setup_logger(name, log_file, level=logging.INFO):
 
     return logger
 
-def get_last_price(coin,argument):
-    # allow geting historical data for the last hours. with argument eg: '1000h ago UTC'
-    klines = client.get_historical_klines( coin+'USDT', '1h', argument)
+def get_last_price(coin):
+    klines = client.get_historical_klines( coin+'USDT', '1h', '1000h ago UTC')
     col = ['open time', 'open', 'high', 'low', 'close', 'volume', 'colsetime', 'qoteAsetVolume', 'ntrade']
     Data = pd.DataFrame(klines)
     df = Data.iloc[:, :-3]
@@ -49,32 +48,11 @@ def buyorder(coin):
     type=Client.ORDER_TYPE_MARKET,
     quantity=round(cash/2/avg_price*(1-0.0015),2))
 
-
-def buyorder_weighted(coin, totalasset, weight):
-    # create buy orders based on total asset and weight.
-    # eg: if totalasset=1000 USD and weight of BTC = 0.4 and existing BTC has a value = 200
-    # function will create a buy order of 200 USD for BTC
-    cash = float(client.get_asset_balance('USDT')['free'])
-    avg_price = float(client.get_avg_price(symbol=coin + 'USDT')['price'])
-    balance_USD = float(client.get_asset_balance(coin)['free'])*avg_price
-    intended_USD_order = totalasset* weight-balance_USD
-    if intended_USD_order>100: # doesn't make sense to create a buy order for 100USD
-        if intended_USD_order> cash:
-            USDQuantity = cash
-        else:
-            USDQuantity = intended_USD_order
-        order = client.create_order(
-        symbol=coin + 'USDT',
-        side=Client.SIDE_BUY,
-        type=Client.ORDER_TYPE_MARKET,
-        quantity=round(USDQuantity / avg_price * (1 - 0.0015), 2))
-
-def get_f(coin):
-    temp=pd.read_csv('trading_frequency.csv',index_col='coins')
-    buy_frequency = temp['buyf'][coin]
-    sell_frequency = temp['sellf'][coin]
-    invest_weight = temp['investweight'][coin]
-    return buy_frequency,sell_frequency,invest_weight
+def get_dic():
+    coins=pd.read_csv('trading_frequency.csv',index_col='coins')
+    coins=coins['frequency']
+    dic=coins.to_dict()
+    return dic
 
 def get_last_trade(coin):
     orders = client.get_all_orders(symbol=coin+'USDT', limit=1)
@@ -96,33 +74,10 @@ def decision(sig,f,quantity):
 
     return decision_out
 
-def decision_buy_sell_f(sig,buy_f,sell_f,quantity):
-    numerator_coeffs, denominator_coeffs = signal.butter(2, buy_f)
-    filtered_buy = signal.lfilter(numerator_coeffs, denominator_coeffs, sig)
-    numerator_coeffs, denominator_coeffs = signal.butter(2, sell_f)
-    filtered_sell = signal.lfilter(numerator_coeffs, denominator_coeffs, sig)
-    if (filtered_sell[-2] > filtered_sell[-1]) and (filtered_sell[-2] > filtered_sell[-3]) and quantity>0.01:
-        decision_out='sell'
-    elif (filtered_buy[-2] < filtered_buy[-1]) and (filtered_buy[-2] < filtered_buy[-3]) and quantity<0.01:
-        decision_out='buy'
-    else:
-        decision_out='NA'
-
-def get_total_asset(coins):
-    # get total assets in USDT
-    asset_total = float(client.get_asset_balance(asset='USDT')['free'])
-    for coin in coins:
-        sig = get_last_price(coin,'10h ago UTC')
-        quantity = float(client.get_asset_balance(asset=coin)['free'])
-        asset = sig.iloc[-1]*quantity
-        asset_total += asset
-    return asset_total
-
-
-
+dic=get_dic()
 for coin in coins:
-    sig=get_last_price(coin,'1000h ago UTC')
-    buy_frequency,sell_frequency,invest_weight = get_f(coin)
+    sig=get_last_price(coin)
+    f=dic[coin]
     cash = float(client.get_asset_balance(asset='USDT')['free'])
     quantity = float(client.get_asset_balance(asset=coin)['free'])
     decision_out=decision(sig, f, quantity)
