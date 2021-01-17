@@ -138,8 +138,8 @@ for coin in coins:
         elif decision_out == 'sell':
             sellorder(coin)
             logger.info('decision = ' + decision_out)
-    except:
-        logger.error('issue with trading')
+    except Exception as e:
+        logger.error('issue with trading:'+ str(e))
 
 
 
