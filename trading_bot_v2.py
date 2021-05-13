@@ -5,7 +5,7 @@ import mykeys
 import logging
 import math
 from scipy import signal
-coins=['BTC','ETH','BNB']
+coins=['BTC','ETH','BNB','DOGE']
 client = Client(mykeys.api_key, mykeys.api_secret)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
@@ -24,7 +24,7 @@ def setup_logger(name, log_file, level=logging.INFO):
 
 def get_last_price(coin,argument):
     # allow geting historical data for the last hours. with argument eg: '1000h ago UTC'
-    klines = client.get_historical_klines( coin+'USDT', '1h', argument)
+    klines = client.get_historical_klines( coin+'USDT', '15m', argument)
     col = ['open time', 'open', 'high', 'low', 'close', 'volume', 'colsetime', 'qoteAsetVolume', 'ntrade']
     Data = pd.DataFrame(klines)
     df = Data.iloc[:, :-3]
@@ -82,7 +82,6 @@ def get_last_trade(coin):
     return last_price, orders[-1]['side']
 
 
-
 def decision(sig,f,quantity):
     numerator_coeffs, denominator_coeffs = signal.butter(2, f)
     filtered = signal.lfilter(numerator_coeffs, denominator_coeffs, sig)
@@ -96,15 +95,15 @@ def decision(sig,f,quantity):
 
     return decision_out
 
-def decision_buy_sell_f(sig,buy_f,sell_f,quantity):
+def decision_buy_sell_f(sig,buy_f,sell_f,quantity,lastorder):
     # buy and sell order based on different filter frequency for bullish and bearish market
     numerator_coeffs, denominator_coeffs = signal.butter(2, buy_f)
     filtered_buy = signal.lfilter(numerator_coeffs, denominator_coeffs, sig)
     numerator_coeffs, denominator_coeffs = signal.butter(2, sell_f)
     filtered_sell = signal.lfilter(numerator_coeffs, denominator_coeffs, sig)
-    if (filtered_sell[-2] > filtered_sell[-1]) and (filtered_sell[-2] > filtered_sell[-3]) and quantity>0.01:
+    if (filtered_sell[-2] > filtered_sell[-1]) and lastorder == 'BUY' and quantity>0.01:
         decision_out='sell'
-    elif (filtered_buy[-2] < filtered_buy[-1]) and (filtered_buy[-2] < filtered_buy[-3]) and quantity<0.01:
+    elif (filtered_buy[-2] < filtered_buy[-1]) and lastorder == 'SELL' and quantity<0.01:
         decision_out='buy'
     else:
         decision_out='NA'
@@ -127,7 +126,8 @@ for coin in coins:
     buy_frequency,sell_frequency,invest_weight = get_f(coin)
     cash = float(client.get_asset_balance(asset='USDT')['free'])
     quantity = float(client.get_asset_balance(asset=coin)['free'])
-    decision_out=decision_buy_sell_f(sig, buy_frequency, sell_frequency, quantity)
+    lastprice,lastorder=get_last_trade(coin)
+    decision_out=decision_buy_sell_f(sig, buy_frequency, sell_frequency, quantity,lastorder)
     logger = setup_logger(coin, coin + '_decision.log')
 
     print(decision_out)
