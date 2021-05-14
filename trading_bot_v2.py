@@ -5,7 +5,7 @@ import mykeys
 import logging
 import math
 from scipy import signal
-coins=['BTC','ETH','BNB','DOGE']
+coins=['BTC','ETH','BNB','DOGE','ADA']
 client = Client(mykeys.api_key, mykeys.api_secret)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
@@ -77,9 +77,14 @@ def get_f(coin):
     return buy_frequency,sell_frequency,invest_weight
 
 def get_last_trade(coin):
-    orders = client.get_all_orders(symbol=coin+'USDT', limit=1)
-    last_price=float(orders[-1]['cummulativeQuoteQty'])/float(orders[-1]['executedQty'])
-    return last_price, orders[-1]['side']
+    try:
+        orders = client.get_all_orders(symbol=coin+'USDT', limit=1)
+        last_price=float(orders[-1]['cummulativeQuoteQty'])/float(orders[-1]['executedQty'])
+        last_status = orders[-1]['side']
+    except:
+        last_price = 0
+        last_status = 'SELL'
+    return last_price, last_status
 
 
 def decision(sig,f,quantity):
