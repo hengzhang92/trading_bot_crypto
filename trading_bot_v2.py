@@ -38,7 +38,7 @@ def sellorder(coin):
     symbol=coin+'USDT',
     side=Client.SIDE_SELL,
     type=Client.ORDER_TYPE_MARKET,
-    quantity=math.floor(float(balance['free']) * 1000) / 1000)
+    quantity=math.floor(float(balance['free']) * 100) / 100)
 
 def buyorder(coin):
     cash= float(client.get_asset_balance('USDT')['free'])
