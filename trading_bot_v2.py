@@ -6,7 +6,7 @@ import logging
 import math
 from scipy import signal
 coins=['BTC','ETH','BNB','DOGE','ADA']
-client = Client(mykeys.api_key, mykeys.api_secret)
+client = Client(mykeys.api_key, mykeys.api_secret,{"timeout": 20})
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
 
